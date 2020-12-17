@@ -36,7 +36,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = (
             'id', 'title', 'time_minutes', 'price',
-            'link', 'ingredients', 'tags',
+            'link', 'ingredients', 'tags', 'image'
         )
         read_only_fields = ('id',)
 
