@@ -5,7 +5,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from core.models import Ingredient
+from core.models import Ingredient, Recipe
 
 from recipe.serializers import IngredientSerializer
 
@@ -91,3 +91,45 @@ class PrivateIngredientsApiTests(TestCase):
         res = self.client.post(INGREDIENTS_URL, payload)
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_ingredients_assigned_to_recipe(self):
+        """Test retrieving ingredients that are asigned for recipe"""
+        recipe_1 = Recipe.objects.create(
+            user=self.user, title='Massefouf', time_minutes=30, price=5
+        )
+        ingredient_1 = Ingredient.objects.create(
+            user=self.user, name='Semoule'
+        )
+        recipe_1.ingredients.add(ingredient_1)
+        ingredient_2 = Ingredient.objects.create(
+            user=self.user, name='Tomatoes'
+        )
+
+        res = self.client.get(INGREDIENTS_URL, {'assigned_only': 1})
+
+        serializer_1 = IngredientSerializer(ingredient_1)
+        serializer_2 = IngredientSerializer(ingredient_2)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(serializer_1.data, res.data)
+        self.assertNotIn(serializer_2.data, res.data)
+
+    def test_retrieve_ingredients_assigned_unique(self):
+        """Test filtering ingredients by assigned returns unique items"""
+        ingredient = Ingredient.objects.create(user=self.user, name='Salt')
+        Ingredient.objects.create(user=self.user, name='suggar')
+        recipe_1 = Recipe.objects.create(
+            user=self.user, title='Massefouf',
+            time_minutes=30, price=5
+        )
+        recipe_2 = Recipe.objects.create(
+            user=self.user, title='Chakchouka',
+            time_minutes=30, price=5
+        )
+        recipe_1.ingredients.add(ingredient)
+        recipe_2.ingredients.add(ingredient)
+
+        res = self.client.get(INGREDIENTS_URL, {'assigned_only': 1})
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
